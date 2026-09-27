@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SPACE RUNNER-2</title>
+<title>SPACE RUNNER</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#08091d;color:#fff;font-family:Arial,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#07091d;color:#fff;font-family:Arial,sans-serif}
 canvas{display:block;width:100%;height:100%;cursor:pointer}
 #hud{position:fixed;top:14px;left:14px;right:14px;display:none;justify-content:space-between;z-index:3;font-weight:800;letter-spacing:1px}
-.badge{background:#0b1030d9;border:1px solid #6074a855;border-radius:12px;padding:9px 13px}
+.badge{background:#0b1030dd;border:1px solid #67dfff55;border-radius:12px;padding:9px 13px}
 #screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#05061aaa;z-index:5}
 .card{width:min(560px,92vw);padding:30px;text-align:center;border-radius:24px;background:#0a0d2fee;border:1px solid #67dfff55;box-shadow:0 0 55px #55dfff22}
 h1{font-size:clamp(40px,9vw,72px);margin:0 0 6px;letter-spacing:4px;background:linear-gradient(90deg,#65efff,#c29cff,#ff8bdc);color:transparent;background-clip:text}
@@ -16,10 +16,8 @@ p{color:#bcc9e8}.input{width:min(360px,100%);padding:14px;border-radius:12px;bor
 button{margin-top:15px;padding:13px 26px;border:0;border-radius:12px;font-weight:800;font-size:16px;background:linear-gradient(90deg,#6df2ff,#b99aff);cursor:pointer}
 .controls{font-size:13px;line-height:1.8;color:#c7d2ef;margin-top:16px}
 #scores{margin:18px auto 0;max-height:180px;overflow:auto;text-align:left;width:min(420px,100%)}
-.row{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #ffffff14}
-.row:first-child{color:#ffe68a;font-weight:800}
-.small{font-size:12px;color:#94a4c9}
-.hidden{display:none!important}
+.row{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #ffffff14}.row:first-child{color:#ffe68a;font-weight:800}
+.small{font-size:12px;color:#94a4c9}.hidden{display:none!important}
 </style>
 </head>
 <body>
@@ -29,38 +27,124 @@ button{margin-top:15px;padding:13px 26px;border:0;border-radius:12px;font-weight
 <script>
 const c=document.getElementById('c'),x=c.getContext('2d'),screen=document.getElementById('screen');
 let W,H,d=1;function size(){d=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*d;c.height=H*d;c.style.width=W+'px';c.style.height=H+'px';x.setTransform(d,0,0,d,0,0)}addEventListener('resize',size);size();
-
-let board=JSON.parse(localStorage.getItem('spaceRunnerPlayers')||'[]');
-let player='',score=0,run=false,last=0,spd=340,spawn=.8,shake=0;
-const p={x:100,y:0,w:48,h:70,vy:0,jump:false,shield:0},obs=[],parts=[],stars=[];
+let board=JSON.parse(localStorage.getItem('spaceRunnerPlayers')||'[]'),player='',score=0,run=false,last=0,spd=340,spawn=.8;
+const p={x:100,y:0,w:48,h:76,vy:0,jump:false,shield:0,boost:0},obs=[],parts=[],stars=[];
 for(let i=0;i<90;i++)stars.push({x:Math.random()*W,y:Math.random()*H*.62,r:.5+Math.random()*1.6,s:8+Math.random()*25});
-
 function ground(){return H*.79}
-function menu(){
- let rows=board.slice(0,8).map((a,i)=>`<div class="row"><span>${i==0?'🥇 ':i==1?'🥈 ':i==2?'🥉 ':''}${esc(a.name)}</span><b>${a.score}</b></div>`).join('');
- screen.innerHTML=`<div class="card"><h1>🚀 SPACE RUNNER</h1><p>Survive the alien world.</p><input id="name" class="input" maxlength="18" placeholder="Enter player name" autocomplete="off"><br><button id="play">START GAME</button><div class="controls">LEFT CLICK / SPACE → JUMP<br>RIGHT CLICK → JETPACK SHIELD</div>${rows?'<div class="small" style="margin-top:18px">HIGH SCORE PLAYERS</div><div id="scores">'+rows+'</div>':''}</div>`;
- document.getElementById('play').onclick=()=>{player=document.getElementById('name').value.trim()||'Player';start()};
- document.getElementById('name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('play').click()});
- setTimeout(()=>document.getElementById('name').focus(),50);
-}
-function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function start(){obs.length=0;parts.length=0;score=0;spd=340;spawn=.8;p.y=ground()-p.h;p.vy=0;p.jump=false;p.shield=0;run=true;screen.classList.add('hidden');document.getElementById('hud').style.display='flex';document.getElementById('pn').textContent=player;document.getElementById('sc').textContent='0';updateTop();last=performance.now();requestAnimationFrame(loop)}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function updateTop(){let b=board[0];document.getElementById('top').textContent=b?b.name+' '+b.score:'-'}
+function menu(){let rows=board.slice(0,8).map((a,i)=>`<div class="row"><span>${i+1}. ${esc(a.name)}</span><b>${a.score}</b></div>`).join('');screen.innerHTML=`<div class="card"><h1>🚀 SPACE RUNNER</h1><p>Run across an alien planet in a standard astronaut suit.</p><input id="name" class="input" maxlength="18" placeholder="Enter player name"><br><button id="play">START GAME</button><div class="controls">LEFT CLICK / SPACE → JUMP<br>RIGHT CLICK → ENERGY SHIELD BOOST<br><span class="small">Fly through zero gravity. Use your rocket thrusters to dodge alien rocks, strange aliens, crystals, pods and space plants.</span></div>${rows?'<div class="small" style="margin-top:18px">🏆 HIGH SCORE PLAYERS</div><div id="scores">'+rows+'</div>':''}</div>`;document.getElementById('play').onclick=()=>{player=document.getElementById('name').value.trim()||'Player';start()};document.getElementById('name').onkeydown=e=>{if(e.key==='Enter')document.getElementById('play').click()};setTimeout(()=>document.getElementById('name').focus(),50)}
+function start(){obs.length=0;parts.length=0;score=0;spd=340;spawn=.8;p.y=ground()-p.h;p.vy=0;p.jump=false;p.shield=0;run=true;screen.classList.add('hidden');document.getElementById('hud').style.display='flex';document.getElementById('pn').textContent=player;document.getElementById('sc').textContent=0;updateTop();last=performance.now();requestAnimationFrame(loop)}
 function burst(px,py,n,col){for(let i=0;i<n;i++)parts.push({x:px,y:py,vx:(Math.random()-.5)*180,vy:(Math.random()-.8)*190,l:.4+Math.random()*.5,col})}
-function jump(){if(run&&!p.jump){p.vy=-740;p.jump=true;burst(p.x+20,p.y+p.h,12,'#80efff')}}
-function special(){if(run&&p.shield<=0){p.shield=.65;p.vy=-150;burst(p.x+25,p.y+35,28,'#69f5ff')}}
-addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();jump()}});
+function jump(){
+  if(run && !p.jump){
+    p.vy=-760;
+    p.jump=true;
+    p.boost=.22;
+    burst(p.x+28,p.y+p.h,14,'#80efff');
+    burst(p.x+28,p.y+p.h,7,'#ff9d5c');
+  }
+}
+function special(){
+  if(run&&p.shield<=0){
+    p.shield=.7;
+    p.vy=-760;
+    p.boost=.7;
+    burst(p.x+28,p.y+p.h,35,'#69f5ff');
+    burst(p.x+28,p.y+p.h,20,'#ff8d4d');
+  }
+}
+addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();jump()}})
 c.addEventListener('click',jump);c.addEventListener('contextmenu',e=>{e.preventDefault();special()});
-
-function addObs(){let t=['rock','robot','crystal','debris'][Math.floor(Math.random()*4)],w=35+Math.random()*30,h=38+Math.random()*38;if(t==='robot'){w=46;h=55}obs.push({x:W+30,y:ground()-h,w,h,t});spawn=.65+Math.random()*.65}
+function addObs(){
+  const types=['ufo','rock','planet','meteor','satellite','crystal'];let t=types[Math.floor(Math.random()*types.length)];
+  let w=40+Math.random()*24,h=38+Math.random()*30;if(t==='ufo'){w=58;h=38}if(t==='planet'){w=54;h=54}if(t==='satellite'){w=60;h=42}if(t==='rock'){w=42;h=42}
+  obs.push({x:W+35,y:ground()-h,w,h,t});spawn=Math.max(.46,.95-score/2400)+Math.random()*.48;
+}
 function hit(a,b){return a.x+8<b.x+b.w-5&&a.x+a.w-8>b.x+5&&a.y+8<b.y+b.h-5&&a.y+a.h-7>b.y+5}
 function end(){run=false;let s=Math.floor(score);board.push({name:player,score:s});board.sort((a,b)=>b.score-a.score);board=board.slice(0,20);localStorage.setItem('spaceRunnerPlayers',JSON.stringify(board));updateTop();document.getElementById('hud').style.display='none';screen.innerHTML=`<div class="card"><h1>MISSION FAILED</h1><p><b>${esc(player)}</b> scored <b>${s}</b></p><div class="small">🏆 Highest score: ${esc(board[0].name)} — ${board[0].score}</div><div id="scores">${board.slice(0,10).map((a,i)=>`<div class="row"><span>${i+1}. ${esc(a.name)}</span><b>${a.score}</b></div>`).join('')}</div><button id="again">NEXT PLAYER</button></div>`;screen.classList.remove('hidden');document.getElementById('again').onclick=menu}
+function update(dt){
+  score+=dt*12;
+  spd=340+Math.min(score*1.8,400);
+  document.getElementById('sc').textContent=Math.floor(score);
+  spawn-=dt;
+  if(spawn<=0)addObs();
 
-function update(dt){score+=dt*12;spd=340+Math.min(score*1.8,380);document.getElementById('sc').textContent=Math.floor(score);spawn-=dt;if(spawn<=0)addObs();p.vy+=1850*dt;p.y+=p.vy*dt;if(p.y>=ground()-p.h){p.y=ground()-p.h;p.vy=0;p.jump=false}if(p.shield>0)p.shield-=dt;obs.forEach(o=>o.x-=spd*dt);for(let i=obs.length-1;i>=0;i--)if(obs[i].x+obs[i].w<0)obs.splice(i,1);for(const o of obs)if(hit(p,o)){if(p.shield>0){o.x=-100;burst(o.x,o.y,20,'#75efff')}else{end();return}}stars.forEach(s=>{s.x-=s.s*dt;if(s.x<0)s.x=W});parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=350*dt;q.l-=dt});for(let i=parts.length-1;i>=0;i--)if(parts[i].l<=0)parts.splice(i,1)}
+  // GRAVITY: the astronaut falls naturally and uses the rocket to jump.
+  p.vy+=1850*dt;
+  p.y+=p.vy*dt;
+  if(p.y>=ground()-p.h){
+    p.y=ground()-p.h;
+    p.vy=0;
+    p.jump=false;
+  }
+  if(p.boost>0)p.boost-=dt;
+  if(p.shield>0)p.shield-=dt;
+
+  obs.forEach(o=>o.x-=spd*dt);
+  for(let i=obs.length-1;i>=0;i--)if(obs[i].x+obs[i].w<0)obs.splice(i,1);
+
+  for(const o of obs)if(hit(p,o)){
+    if(p.shield>0){o.x=-100;burst(o.x,o.y,20,'#75efff')}
+    else{end();return}
+  }
+
+  stars.forEach(s=>{s.x-=s.s*dt;if(s.x<0)s.x=W});
+  parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=70*dt;q.l-=dt});
+  for(let i=parts.length-1;i>=0;i--)if(parts[i].l<=0)parts.splice(i,1);
+
+  // Continuous tiny rocket exhaust while drifting.
+  if(Math.random()<dt*16)burst(p.x+28,p.y+p.h-2,1,p.boost>0?'#ff9b55':'#62eaff');
+}
 function draw(){let g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#080a28');g.addColorStop(1,'#261640');x.fillStyle=g;x.fillRect(0,0,W,H);x.fillStyle='#b8b5e8';x.globalAlpha=.75;x.beginPath();x.arc(W*.78,H*.2,Math.min(W,H)*.085,0,7);x.fill();x.globalAlpha=1;stars.forEach(s=>{x.fillStyle='#d9eaff';x.beginPath();x.arc(s.x,s.y,s.r,0,7);x.fill()});x.fillStyle='#15183c';x.beginPath();x.moveTo(0,H*.64);for(let i=0;i<W;i+=80)x.lineTo(i,H*.55-Math.sin(i*.014)*40);x.lineTo(W,ground());x.lineTo(0,ground());x.fill();x.fillStyle='#2a2140';x.fillRect(0,ground(),W,H-ground());obs.forEach(drawObs);drawPlayer();parts.forEach(q=>{x.globalAlpha=Math.max(q.l,0);x.fillStyle=q.col;x.beginPath();x.arc(q.x,q.y,2+Math.random()*3,0,7);x.fill();x.globalAlpha=1})}
-function drawObs(o){x.save();if(o.t==='rock'){x.fillStyle='#77738f';x.beginPath();x.moveTo(o.x,o.y+o.h);x.lineTo(o.x+7,o.y+12);x.lineTo(o.x+o.w/2,o.y);x.lineTo(o.x+o.w,o.y+15);x.lineTo(o.x+o.w-4,o.y+o.h);x.fill()}else if(o.t==='robot'){x.fillStyle='#5b6880';x.fillRect(o.x,o.y+10,o.w,o.h-10);x.fillStyle='#77eaff';x.fillRect(o.x+9,o.y+23,8,7);x.fillRect(o.x+29,o.y+23,8,7);x.fillStyle='#7d8aa4';x.fillRect(o.x+15,o.y,15,12)}else if(o.t==='crystal'){x.fillStyle='#8068e9';x.beginPath();x.moveTo(o.x+o.w/2,o.y);x.lineTo(o.x+o.w,o.y+o.h);x.lineTo(o.x,o.y+o.h);x.fill()}else{x.fillStyle='#d16c9d';x.rotate(.2);x.fillRect(o.x,o.y+15,o.w,o.h/2)}x.restore()}
-function drawPlayer(){let cx=p.x+24,cy=p.y+35;x.strokeStyle='#e7eef9';x.lineWidth=8;x.lineCap='round';let r=Math.sin(performance.now()/90)*(p.jump?0:7);x.beginPath();x.moveTo(cx-8,p.y+55);x.lineTo(cx-14+r,p.y+69);x.moveTo(cx+8,p.y+55);x.lineTo(cx+14-r,p.y+69);x.stroke();x.fillStyle='#eef5ff';x.fillRect(p.x+8,p.y+27,32,34);x.strokeStyle='#e7eef9';x.beginPath();x.moveTo(p.x+9,p.y+34);x.lineTo(p.x-1,p.y+48);x.moveTo(p.x+39,p.y+34);x.lineTo(p.x+49,p.y+46);x.stroke();x.fillStyle='#f2f7ff';x.beginPath();x.arc(cx,p.y+22,24,0,7);x.fill();x.fillStyle='#17243c';x.beginPath();x.arc(cx,p.y+22,17,0,7);x.fill();x.fillStyle='#67dfff99';x.beginPath();x.ellipse(cx-6,p.y+16,8,4,-.4,0,7);x.fill();x.fillStyle='#56627b';x.fillRect(p.x-6,p.y+27,9,32);if(p.shield>0){x.strokeStyle='#6df4ff';x.lineWidth=4;x.beginPath();x.arc(cx,cy,45,0,7);x.stroke();x.fillStyle='#6df4ff';x.beginPath();x.moveTo(p.x-5,p.y+58);x.lineTo(p.x+1,p.y+84+Math.random()*7);x.lineTo(p.x+7,p.y+58);x.fill()}}
+function drawObs(o){
+  x.save();x.shadowBlur=18;
+  if(o.t==='ufo'){
+    x.shadowColor='#59eaff';x.fillStyle='#55647e';x.beginPath();x.ellipse(o.x+o.w/2,o.y+o.h*.58,o.w/2,o.h*.27,0,0,7);x.fill();
+    x.fillStyle='#253752';x.beginPath();x.ellipse(o.x+o.w/2,o.y+o.h*.38,o.w*.24,o.h*.23,0,0,7);x.fill();x.strokeStyle='#8df6ff';x.lineWidth=2;x.stroke();
+    x.fillStyle='#68f4ff';for(let i=0;i<4;i++){x.beginPath();x.arc(o.x+10+i*(o.w-20)/3,o.y+o.h*.67,3,0,7);x.fill()}
+    x.fillStyle='#ff75dc';x.beginPath();x.arc(o.x+o.w/2,o.y+o.h*.38,3,0,7);x.fill();
+  }else if(o.t==='rock'){
+    x.shadowColor='#9c86a8';x.fillStyle='#6b6276';x.beginPath();x.moveTo(o.x+5,o.y+o.h*.82);x.lineTo(o.x+2,o.y+o.h*.38);x.lineTo(o.x+o.w*.3,o.y+5);x.lineTo(o.x+o.w*.75,o.y);x.lineTo(o.x+o.w-3,o.y+o.h*.34);x.lineTo(o.x+o.w-7,o.y+o.h*.86);x.lineTo(o.x+o.w*.48,o.y+o.h);x.closePath();x.fill();
+    x.fillStyle='#93879c';x.beginPath();x.arc(o.x+o.w*.3,o.y+o.h*.42,6,0,7);x.arc(o.x+o.w*.68,o.y+o.h*.67,5,0,7);x.fill();
+  }else if(o.t==='planet'){
+    x.shadowColor='#c16cff';x.fillStyle='#7d55c9';x.beginPath();x.arc(o.x+o.w/2,o.y+o.h/2,o.w*.36,0,7);x.fill();
+    x.fillStyle='#a878e8';x.beginPath();x.arc(o.x+o.w*.38,o.y+o.h*.38,o.w*.1,0,7);x.arc(o.x+o.w*.62,o.y+o.h*.57,o.w*.08,0,7);x.fill();
+    x.strokeStyle='#e08aff';x.lineWidth=4;x.beginPath();x.ellipse(o.x+o.w/2,o.y+o.h*.58,o.w*.62,o.h*.18,-.12,0,7);x.stroke();
+  }else if(o.t==='meteor'){
+    x.shadowColor='#ff7048';x.fillStyle='#62566b';x.beginPath();x.moveTo(o.x+3,o.y+o.h);x.lineTo(o.x+8,o.y+14);x.lineTo(o.x+o.w*.4,o.y+2);x.lineTo(o.x+o.w-3,o.y+15);x.lineTo(o.x+o.w-7,o.y+o.h);x.closePath();x.fill();
+    x.fillStyle='#ff845e';x.beginPath();x.arc(o.x+o.w*.58,o.y+o.h*.43,5,0,7);x.fill();x.strokeStyle='#ffb078';x.lineWidth=3;x.beginPath();x.moveTo(o.x+5,o.y+15);x.lineTo(o.x-28,o.y-5);x.stroke();
+  }else if(o.t==='satellite'){
+    x.shadowColor='#62eaff';x.strokeStyle='#b9d6e8';x.lineWidth=3;x.fillStyle='#566b82';x.fillRect(o.x+o.w*.35,o.y+o.h*.3,o.w*.3,o.h*.4);
+    x.fillStyle='#426fa0';x.fillRect(o.x,o.y+o.h*.32,o.w*.28,o.h*.32);x.fillRect(o.x+o.w*.72,o.y+o.h*.32,o.w*.28,o.h*.32);
+    x.strokeStyle='#78efff';x.beginPath();x.moveTo(o.x+o.w/2,o.y+o.h*.7);x.lineTo(o.x+o.w*.72,o.y+o.h);x.stroke();x.fillStyle='#ff78d7';x.beginPath();x.arc(o.x+o.w*.5,o.y+o.h*.5,3,0,7);x.fill();
+  }else{
+    x.shadowColor='#8f72ff';x.fillStyle='#7055d9';x.beginPath();x.moveTo(o.x+o.w/2,o.y);x.lineTo(o.x+o.w,o.y+o.h*.72);x.lineTo(o.x+o.w*.7,o.y+o.h);x.lineTo(o.x+o.w*.18,o.y+o.h);x.lineTo(o.x,o.y+o.h*.62);x.closePath();x.fill();
+    x.fillStyle='#ddd3ff';x.beginPath();x.moveTo(o.x+o.w*.48,o.y+6);x.lineTo(o.x+o.w*.62,o.y+o.h*.78);x.lineTo(o.x+o.w*.45,o.y+o.h*.82);x.closePath();x.fill();
+  }
+  x.shadowBlur=0;x.restore();
+}
+function drawPlayer(){
+  const bob=Math.sin(performance.now()/110)*1.2;x.save();
+  // Standard astronaut suit
+  x.fillStyle='#9aa8b8';x.strokeStyle='#e8f4ff';x.lineWidth=1.5;x.beginPath();x.roundRect(p.x+2,p.y+24+bob,12,35,5);x.fill();x.stroke();
+  x.fillStyle='#53eaff';x.fillRect(p.x+5,p.y+31+bob,6,3);x.fillStyle='#ff75d8';x.fillRect(p.x+5,p.y+40+bob,6,3);
+  x.fillStyle='#eef5fb';x.strokeStyle='#899bad';x.lineWidth=2;x.beginPath();x.arc(p.x+27,p.y+17+bob,17,0,7);x.fill();x.stroke();
+  x.fillStyle='#17283d';x.strokeStyle='#5de9ff';x.lineWidth=2;x.beginPath();x.ellipse(p.x+28,p.y+17+bob,11,9,0,0,7);x.fill();x.stroke();
+  x.fillStyle='#bdf7ff';x.globalAlpha=.65;x.beginPath();x.ellipse(p.x+24,p.y+13+bob,4,2,0,0,7);x.fill();x.globalAlpha=1;
+  x.strokeStyle='#cdd9e5';x.lineWidth=2;x.beginPath();x.moveTo(p.x+38,p.y+6+bob);x.lineTo(p.x+43,p.y+1+bob);x.stroke();x.fillStyle='#ff68d0';x.beginPath();x.arc(p.x+44,p.y+bob,2.5,0,7);x.fill();
+  x.fillStyle='#f3f7fa';x.strokeStyle='#9aaaba';x.lineWidth=1.5;x.beginPath();x.roundRect(p.x+10,p.y+32+bob,34,27,8);x.fill();x.stroke();
+  x.fillStyle='#26394f';x.beginPath();x.roundRect(p.x+23,p.y+39+bob,15,8,2);x.fill();x.fillStyle='#58efff';x.fillRect(p.x+25,p.y+41+bob,3,3);x.fillStyle='#ff65d1';x.fillRect(p.x+30,p.y+41+bob,3,3);
+  x.strokeStyle='#f1f6fa';x.lineWidth=8;x.lineCap='round';x.beginPath();x.moveTo(p.x+12,p.y+38+bob);x.lineTo(p.x+4,p.y+51+bob);x.lineTo(p.x+11,p.y+56+bob);x.moveTo(p.x+42,p.y+38+bob);x.lineTo(p.x+50,p.y+50+bob);x.lineTo(p.x+44,p.y+56+bob);x.stroke();
+  x.fillStyle='#dce6ee';x.beginPath();x.arc(p.x+11,p.y+57+bob,4,0,7);x.arc(p.x+44,p.y+57+bob,4,0,7);x.fill();
+  x.strokeStyle='#edf4f8';x.lineWidth=9;x.beginPath();x.moveTo(p.x+20,p.y+57+bob);x.lineTo(p.x+17,p.y+70+bob);x.moveTo(p.x+35,p.y+57+bob);x.lineTo(p.x+38,p.y+70+bob);x.stroke();
+  x.fillStyle='#33465a';x.beginPath();x.roundRect(p.x+11,p.y+67+bob,13,7,3);x.roundRect(p.x+33,p.y+67+bob,13,7,3);x.fill();
+  if(p.shield>0){x.strokeStyle='#69efff';x.lineWidth=3;x.shadowBlur=18;x.shadowColor='#69efff';x.beginPath();x.arc(p.x+27,p.y+38,39,0,7);x.stroke();x.shadowBlur=0}
+  x.restore();
+}
+
 function loop(t){if(!run)return;let dt=Math.min((t-last)/1000,.033);last=t;update(dt);draw();requestAnimationFrame(loop)}
 menu();draw();
 </script>
-</body></html>
+</body>
+</html>
