@@ -125,21 +125,116 @@ function drawObs(o){
   x.shadowBlur=0;x.restore();
 }
 function drawPlayer(){
-  const bob=Math.sin(performance.now()/110)*1.2;x.save();
-  // Standard astronaut suit
-  x.fillStyle='#9aa8b8';x.strokeStyle='#e8f4ff';x.lineWidth=1.5;x.beginPath();x.roundRect(p.x+2,p.y+24+bob,12,35,5);x.fill();x.stroke();
-  x.fillStyle='#53eaff';x.fillRect(p.x+5,p.y+31+bob,6,3);x.fillStyle='#ff75d8';x.fillRect(p.x+5,p.y+40+bob,6,3);
-  x.fillStyle='#eef5fb';x.strokeStyle='#899bad';x.lineWidth=2;x.beginPath();x.arc(p.x+27,p.y+17+bob,17,0,7);x.fill();x.stroke();
-  x.fillStyle='#17283d';x.strokeStyle='#5de9ff';x.lineWidth=2;x.beginPath();x.ellipse(p.x+28,p.y+17+bob,11,9,0,0,7);x.fill();x.stroke();
-  x.fillStyle='#bdf7ff';x.globalAlpha=.65;x.beginPath();x.ellipse(p.x+24,p.y+13+bob,4,2,0,0,7);x.fill();x.globalAlpha=1;
-  x.strokeStyle='#cdd9e5';x.lineWidth=2;x.beginPath();x.moveTo(p.x+38,p.y+6+bob);x.lineTo(p.x+43,p.y+1+bob);x.stroke();x.fillStyle='#ff68d0';x.beginPath();x.arc(p.x+44,p.y+bob,2.5,0,7);x.fill();
-  x.fillStyle='#f3f7fa';x.strokeStyle='#9aaaba';x.lineWidth=1.5;x.beginPath();x.roundRect(p.x+10,p.y+32+bob,34,27,8);x.fill();x.stroke();
-  x.fillStyle='#26394f';x.beginPath();x.roundRect(p.x+23,p.y+39+bob,15,8,2);x.fill();x.fillStyle='#58efff';x.fillRect(p.x+25,p.y+41+bob,3,3);x.fillStyle='#ff65d1';x.fillRect(p.x+30,p.y+41+bob,3,3);
-  x.strokeStyle='#f1f6fa';x.lineWidth=8;x.lineCap='round';x.beginPath();x.moveTo(p.x+12,p.y+38+bob);x.lineTo(p.x+4,p.y+51+bob);x.lineTo(p.x+11,p.y+56+bob);x.moveTo(p.x+42,p.y+38+bob);x.lineTo(p.x+50,p.y+50+bob);x.lineTo(p.x+44,p.y+56+bob);x.stroke();
-  x.fillStyle='#dce6ee';x.beginPath();x.arc(p.x+11,p.y+57+bob,4,0,7);x.arc(p.x+44,p.y+57+bob,4,0,7);x.fill();
-  x.strokeStyle='#edf4f8';x.lineWidth=9;x.beginPath();x.moveTo(p.x+20,p.y+57+bob);x.lineTo(p.x+17,p.y+70+bob);x.moveTo(p.x+35,p.y+57+bob);x.lineTo(p.x+38,p.y+70+bob);x.stroke();
-  x.fillStyle='#33465a';x.beginPath();x.roundRect(p.x+11,p.y+67+bob,13,7,3);x.roundRect(p.x+33,p.y+67+bob,13,7,3);x.fill();
-  if(p.shield>0){x.strokeStyle='#69efff';x.lineWidth=3;x.shadowBlur=18;x.shadowColor='#69efff';x.beginPath();x.arc(p.x+27,p.y+38,39,0,7);x.stroke();x.shadowBlur=0}
+  // Animated "movie-like" astronaut: running cycle, body bounce, head movement,
+  // blinking visor light, moving arms/legs and little suit breathing motion.
+  const now=performance.now();
+  const t=now/1000;
+  const running=Math.abs(p.vy)<180 && !p.jump;
+  const cycle=now/125;
+  const swing=Math.sin(cycle);
+  const swing2=Math.sin(cycle+Math.PI);
+  const bob=running ? Math.abs(Math.sin(cycle*0.5))*2.2 : Math.sin(t*5)*0.8;
+  const air=p.jump;
+  const legSwing=air ? 0.15*Math.sin(t*7) : swing*7;
+  const armSwing=air ? 0.15*Math.sin(t*6) : swing2*5;
+  const tilt=air ? Math.max(-0.08,Math.min(0.08,p.vy/9000)) : swing*0.025;
+  const blink=(Math.sin(t*0.9)>0.985);
+
+  x.save();
+  x.translate(p.x+27,p.y+38+bob);
+  x.rotate(tilt);
+  x.translate(-27,-38);
+
+  // Soft shadow under the astronaut while on the ground.
+  if(!air){
+    x.globalAlpha=.18;
+    x.fillStyle='#000';
+    x.beginPath();x.ellipse(27,76,23,5,0,0,7);x.fill();
+    x.globalAlpha=1;
+  }
+
+  // Life-support backpack with animated status lights.
+  x.fillStyle='#8798a9';x.strokeStyle='#e4f1f8';x.lineWidth=1.5;
+  x.beginPath();x.roundRect(1,25,12,34,5);x.fill();x.stroke();
+  x.fillStyle=Math.sin(t*5)>0?'#55efff':'#294d60';x.fillRect(4,32,6,3);
+  x.fillStyle=Math.sin(t*4+1)>0?'#ff73d8':'#542b50';x.fillRect(4,41,6,3);
+
+  // Back exhaust / floating particles.
+  if(p.boost>0 || air){
+    x.globalAlpha=.75;
+    x.fillStyle='#63eaff';
+    x.beginPath();x.arc(7,61,2+Math.random()*2,0,7);x.fill();
+    x.fillStyle='#ff9a58';
+    x.beginPath();x.arc(11,64,1.5+Math.random()*2,0,7);x.fill();
+    x.globalAlpha=1;
+  }
+
+  // Animated legs behind body.
+  x.strokeStyle='#eef5fa';x.lineWidth=9;x.lineCap='round';
+  x.beginPath();
+  x.moveTo(20,57);x.lineTo(17+legSwing,70);
+  x.moveTo(35,57);x.lineTo(38-legSwing,70);
+  x.stroke();
+  // Boot soles move with the run cycle.
+  x.fillStyle='#33465a';
+  x.beginPath();
+  x.roundRect(11+legSwing,67,13,7,3);
+  x.roundRect(33-legSwing,67,13,7,3);
+  x.fill();
+
+  // Animated arms.
+  x.strokeStyle='#f1f6fa';x.lineWidth=8;
+  x.beginPath();
+  x.moveTo(12,38);x.lineTo(4-armSwing*.45,51+armSwing*.35);x.lineTo(11,56+armSwing*.15);
+  x.moveTo(42,38);x.lineTo(50+armSwing*.45,50-armSwing*.35);x.lineTo(44,56-armSwing*.15);
+  x.stroke();
+  x.fillStyle='#dce6ee';
+  x.beginPath();x.arc(11,57+armSwing*.15,4,0,7);x.arc(44,57-armSwing*.15,4,0,7);x.fill();
+
+  // Suit body.
+  x.fillStyle='#f3f7fa';x.strokeStyle='#9aaaba';x.lineWidth=1.5;
+  x.beginPath();x.roundRect(10,32,34,27,8);x.fill();x.stroke();
+
+  // Chest panel with pulsing indicator.
+  x.fillStyle='#26394f';x.beginPath();x.roundRect(23,39,15,8,2);x.fill();
+  x.fillStyle=Math.sin(t*6)>0?'#58efff':'#244c5b';x.fillRect(25,41,3,3);
+  x.fillStyle=Math.sin(t*4+2)>0?'#ff65d1':'#5a3154';x.fillRect(30,41,3,3);
+  // Tiny animated chest bar.
+  x.fillStyle='#9defff';x.fillRect(25,45,10*(.55+.45*Math.sin(t*3)**2),1.5);
+
+  // Neck ring.
+  x.fillStyle='#c6d2dc';x.beginPath();x.roundRect(20,27,15,8,4);x.fill();
+
+  // Helmet with tiny breathing/bobbing motion.
+  const headY=-1.5+Math.sin(t*2.2)*0.5;
+  x.save();x.translate(27,17+headY);x.rotate(Math.sin(t*1.7)*0.035);x.translate(-27,-17-headY);
+  x.fillStyle='#eef5fb';x.strokeStyle='#899bad';x.lineWidth=2;
+  x.beginPath();x.arc(27,17,17,0,7);x.fill();x.stroke();
+  // Visor.
+  x.fillStyle='#17283d';x.strokeStyle='#5de9ff';x.lineWidth=2;
+  x.beginPath();x.ellipse(28,17,11,9,0,0,7);x.fill();x.stroke();
+  // Visor reflection sweeps across like a live animated highlight.
+  const shine=(Math.sin(t*1.8)+1)/2;
+  x.fillStyle='#bdf7ff';x.globalAlpha=.28+.22*shine;
+  x.beginPath();x.ellipse(24+shine*7,13,4,2,0,0,7);x.fill();x.globalAlpha=1;
+  // Blinking suit/helmet light.
+  x.fillStyle=blink?'#ffffff':'#ff68d0';
+  x.beginPath();x.arc(44,0,2.5,0,7);x.fill();
+  x.restore();
+
+  // Antenna.
+  x.strokeStyle='#cdd9e5';x.lineWidth=2;x.beginPath();x.moveTo(38,6);x.lineTo(43,1);x.stroke();
+  x.fillStyle=blink?'#ffffff':'#ff68d0';x.beginPath();x.arc(44,0,2.5,0,7);x.fill();
+
+  // Little shield shimmer.
+  if(p.shield>0){
+    const pulse=1+Math.sin(t*10)*.035;
+    x.strokeStyle='#69efff';x.lineWidth=3;x.shadowBlur=18;x.shadowColor='#69efff';
+    x.beginPath();x.arc(27,38,39*pulse,0,7);x.stroke();
+    x.shadowBlur=0;
+    x.globalAlpha=.22+.12*Math.sin(t*8);
+    x.fillStyle='#69efff';x.beginPath();x.arc(27,38,37*pulse,0,7);x.fill();x.globalAlpha=1;
+  }
   x.restore();
 }
 
